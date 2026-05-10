@@ -36,8 +36,15 @@ export function AuthProvider({ children }) {
       ...(options.headers || {}),
     }
     if (token) headers.Authorization = `Bearer ${token}`
-    return fetch(`${apiBase}${path}`, { ...options, headers })
-  }, [token])
+    
+    const res = await fetch(`${apiBase}${path}`, { ...options, headers })
+    
+    if (res.status === 401) {
+      persistAuth(null, '')
+    }
+    
+    return res
+  }, [token, persistAuth])
 
   const login = useCallback(async (email, password) => {
     const e = email.trim().toLowerCase()
