@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
 export function Login() {
-  const { user, login } = useAuth()
+  const { user, login, loading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,10 +11,10 @@ export function Login() {
 
   if (user) return <Navigate to="/" replace />
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    const res = login(email, password)
+    const res = await login(email, password)
     if (res.ok) navigate('/', { replace: true })
     else setError(res.error || 'Xatolik')
   }
@@ -82,9 +82,10 @@ export function Login() {
           </div>
           <button
             type="submit"
+            disabled={loading}
             className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
           >
-            Kirish
+            {loading ? 'Kutilmoqda...' : 'Kirish'}
           </button>
         </form>
 

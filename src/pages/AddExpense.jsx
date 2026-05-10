@@ -5,6 +5,7 @@ import { MoneyDigitsField } from "../components/MoneyDigitsField";
 import { useCategories } from "../context/useCategories";
 import { useCurrency } from "../context/useCurrency";
 import { useExpenses } from "../context/useExpenses";
+import { useAuth } from "../context/useAuth";
 import {
   formatGroupedFromDigits,
   inputCurrencyHint,
@@ -15,10 +16,7 @@ export function AddExpense() {
   const navigate = useNavigate();
   const { addExpense } = useExpenses();
   const { currency } = useCurrency();
-  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(
-    /\/$/,
-    "",
-  );
+  const { notifyExpense } = useAuth();
   const locale = inputLocaleForCurrency(currency);
   const { allOptions, addCustomCategory } = useCategories();
   const [amountDigits, setAmountDigits] = useState("");
@@ -58,23 +56,9 @@ export function AddExpense() {
       categoryLabel: cat.label,
     });
 
-    // 🔥 BACKEND + TELEGRAM
-    try {
-      const res = await fetch(`${apiBase}/notify`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          category: cat.label,
-        }),
-      });
-      if (!res.ok) {
-        console.log("Notify response is not OK:", res.status);
-      }
-    } catch (err) {
-      console.log("Backend error:", err);
+    const result = await notifyExpense({ amount, category: cat.label });
+    if (!result.ok) {
+      console.log("Notify error:", result.error);
     }
 
     navigate("/expenses");

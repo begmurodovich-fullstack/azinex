@@ -3,29 +3,39 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
 export function Signup() {
-  const { user, signup } = useAuth()
+  const { user, signup, loading } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
   const [error, setError] = useState('')
+  const [okMsg, setOkMsg] = useState('')
 
   if (user) return <Navigate to="/" replace />
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (password.length < 6) {
-      setError('Parol kamida 6 belgi bo‘lsin')
+    setOkMsg('')
+
+    if (!name.trim()) {
+      setError('Ism majburiy')
+      return
+    }
+    if (password.length < 8) {
+      setError('Parol kamida 8 belgi bo‘lsin')
       return
     }
     if (password !== password2) {
       setError('Parollar mos emas')
       return
     }
-    const res = signup({ name, email, password })
-    if (res.ok) navigate('/', { replace: true })
+    const res = await signup({ name, email, password })
+    if (res.ok) {
+      setOkMsg("Ro'yxatdan o'tish muvaffaqiyatli. Endi login qiling.")
+      navigate('/login', { replace: true })
+    }
     else setError(res.error || 'Ro‘yxatdan o‘tish amalga oshmadi')
   }
 
@@ -56,6 +66,11 @@ export function Signup() {
           {error ? (
             <p className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-300">
               {error}
+            </p>
+          ) : null}
+          {okMsg ? (
+            <p className="rounded-lg bg-emerald-500/15 px-3 py-2 text-sm text-emerald-300">
+              {okMsg}
             </p>
           ) : null}
           <div>
@@ -90,14 +105,14 @@ export function Signup() {
           </div>
           <div>
             <label htmlFor="su-pass" className="mb-1 block text-xs text-muted">
-              Parol (kamida 6 belgi)
+              Parol (kamida 8 belgi)
             </label>
             <input
               id="su-pass"
               type="password"
               autoComplete="new-password"
               required
-              minLength={6}
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -119,9 +134,10 @@ export function Signup() {
           </div>
           <button
             type="submit"
+            disabled={loading}
             className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
           >
-            Ro‘yxatdan o‘tish
+            {loading ? 'Yuborilmoqda...' : 'Ro‘yxatdan o‘tish'}
           </button>
         </form>
 

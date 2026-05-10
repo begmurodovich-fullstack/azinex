@@ -4,6 +4,7 @@ import { MoneyDigitsField } from '../components/MoneyDigitsField'
 import { useCategories } from '../context/useCategories'
 import { useCurrency } from '../context/useCurrency'
 import { useExpenses } from '../context/useExpenses'
+import { useAuth } from '../context/useAuth'
 import { formatDateShort } from '../lib/format'
 import {
   formatGroupedFromDigits,
@@ -20,11 +21,13 @@ export function Dashboard() {
     totalExpensesAmount,
   } = useExpenses()
   const { formatMoney, currency } = useCurrency()
+  const { user, connectTelegram } = useAuth()
   const locale = inputLocaleForCurrency(currency)
   const { getMeta } = useCategories()
   /** null = saqlangan balansdan ko‘rsatish; yozishda raqamlar qatori */
   const [balDigits, setBalDigits] = useState(null)
   const [topUpDigits, setTopUpDigits] = useState('')
+  const [tgState, setTgState] = useState({ code: '', error: '', loading: false })
 
   const balanceDigitsEffective =
     balDigits !== null
@@ -101,6 +104,20 @@ export function Dashboard() {
     if (!Number.isFinite(n) || n <= 0) return
     addToBalance(n)
     setTopUpDigits('')
+  }
+
+  async function handleTelegramConnect() {
+    setTgState({ code: '', error: '', loading: true })
+    const res = await connectTelegram()
+    if (!res.ok) {
+      setTgState({ code: '', error: res.error || 'Ulanishda xatolik', loading: false })
+      return
+    }
+    setTgState({
+      code: res.code || '',
+      error: '',
+      loading: false,
+    })
   }
 
   return (
@@ -307,6 +324,37 @@ export function Dashboard() {
       </div>
 
       <div>
+        <div className="mb-6 rounded-xl border border-border-subtle bg-surface p-4">
+          <p className="text-sm font-semibold text-foreground">Telegram ulash</p>
+          {user?.hasTelegram ? (
+            <p className="mt-1 text-xs text-emerald-400">
+              Telegram ulangan. Endi bildirishnomalar sizga yuboriladi.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-muted">
+                Tugmani bosing, keyin botga chiqqan kodni yuboring: <code>/start KOD</code>
+              </p>
+              <button
+                type="button"
+                onClick={handleTelegramConnect}
+                disabled={tgState.loading}
+                className="mt-3 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-400 disabled:opacity-70"
+              >
+                {tgState.loading ? 'Yaratilmoqda...' : 'Telegramni ulash kodi'}
+              </button>
+              {tgState.code ? (
+                <p className="mt-2 text-xs text-foreground">
+                  Kod: <code>{tgState.code}</code> (15 daqiqa ichida)
+                </p>
+              ) : null}
+              {tgState.error ? (
+                <p className="mt-2 text-xs text-red-400">{tgState.error}</p>
+              ) : null}
+            </>
+          )}
+        </div>
+
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           So‘nggi xarajatlar
         </h2>
