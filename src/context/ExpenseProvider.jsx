@@ -64,21 +64,22 @@ export function ExpenseProvider({ children }) {
     });
   }, [authFetch])
 
-  const addExpense = useCallback((payload) => {
-    // Optimistic local update not strictly needed, but makes UI feel fast.
-    // However, the backend generates ID. So it's better to wait for backend,
-    // or just let backend create and then append.
-    authFetch("/user-data/expenses", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok && data.expense) {
-          setExpenses(prev => [data.expense, ...prev]);
-        }
-      })
-      .catch(console.error);
+  const addExpense = useCallback(async (payload) => {
+    try {
+      const res = await authFetch("/user-data/expenses", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.expense) {
+        setExpenses(prev => [data.expense, ...prev]);
+        return { ok: true, expense: data.expense };
+      }
+      return { ok: false, error: data.error || "Xatolik yuz berdi" };
+    } catch (e) {
+      console.error(e);
+      return { ok: false, error: e.message };
+    }
   }, [authFetch])
 
   const deleteExpense = useCallback((id) => {

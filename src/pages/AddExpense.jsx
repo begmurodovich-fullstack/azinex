@@ -49,12 +49,17 @@ export function AddExpense() {
 
     const amount = Math.round(n);
 
-    // ✅ LOCAL SAVE
-    addExpense({
+    // ✅ BACKEND SAVE
+    const saveResult = await addExpense({
       amount,
       categoryKey: cat.key,
       categoryLabel: cat.label,
     });
+
+    if (!saveResult || !saveResult.ok) {
+      setSubmitErr(saveResult?.error || "Xarajatni saqlab bo'lmadi");
+      return;
+    }
 
     const result = await notifyExpense({ amount, category: cat.label });
     if (!result.ok) {
