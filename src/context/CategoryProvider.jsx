@@ -1,37 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getCategoryMeta, mergeCategoryOptions } from '../lib/categories'
 import { CategoryContext } from './categoryContext'
-
-const STORAGE = 'azinex-user-categories-v1'
-
-function readUserCategories() {
-  try {
-    const raw = localStorage.getItem(STORAGE)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (x) =>
-        x &&
-        typeof x.key === 'string' &&
-        typeof x.label === 'string' &&
-        x.key.startsWith('u_'),
-    )
-  } catch {
-    return []
-  }
-}
+import { useAuth } from './useAuth'
 
 export function CategoryProvider({ children }) {
-  const [userCategories, setUserCategories] = useState(readUserCategories)
+  const { authFetch, isAuthenticated } = useAuth()
+  const [userCategories, setUserCategories] = useState([])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE, JSON.stringify(userCategories))
-    } catch {
-      /* ignore */
-    }
-  }, [userCategories])
+    if (!isAuthenticated) return;
+    let mounted = true;
+    authFetch("/user-data")
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data.ok) {
+          setUserCategories(data.categories || []);
+        }
+      })
+      .catch(console.error);
+    
+    return () => { mounted = false; };
+  }, [authFetch, isAuthenticated]);
 
   const allOptions = useMemo(
     () => mergeCategoryOptions(userCategories),
@@ -47,26 +36,44 @@ export function CategoryProvider({ children }) {
   const addCustomCategory = useCallback((label) => {
     const t = label.trim()
     if (!t) return null
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `id-${Date.now()}`
-    const key = `u_${id}`
-    let added = /** @type {string | null} */ (null)
-    setUserCategories((prev) => {
-      if (prev.some((c) => c.label.toLowerCase() === t.toLowerCase())) {
-        return prev
+    
+    // Check local duplicate first
+    if (userCategories.some((c) => c.label.toLowerCase() === t.toLowerCase())) {
+      return null;
+    }
+
+    // Backend generated ID and Key, but we need to return something synchronous.
+    // Instead, we will generate ID/Key locally for immediate return.
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id-${Date.now()}`;
+    const key = `u_${id}`;
+    
+    authFetch("/user-data/categories", {
+      method: "POST",
+      body: JSON.stringify({ label: t })
+    }).then(res => res.json()).then(data => {
+      if (data.ok && data.category) {
+        setUserCategories(prev => {
+          if (prev.some(c => c.key === data.category.key || c.label.toLowerCase() === t.toLowerCase())) {
+            return prev;
+          }
+          return [...prev, data.category];
+        });
       }
-      added = key
-      return [...prev, { id, key, label: t }]
-    })
-    return added
-  }, [])
+    }).catch(console.error);
+
+    // Optimistically update
+    setUserCategories(prev => [...prev, { id, key, label: t }]);
+    return key;
+  }, [authFetch, userCategories])
 
   const removeCustomCategory = useCallback((key) => {
     if (!key.startsWith('u_')) return
     setUserCategories((prev) => prev.filter((c) => c.key !== key))
-  }, [])
+    
+    authFetch(`/user-data/categories/${key}`, {
+      method: "DELETE"
+    }).catch(console.error);
+  }, [authFetch])
 
   const value = useMemo(
     () => ({

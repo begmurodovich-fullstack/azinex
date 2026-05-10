@@ -146,8 +146,9 @@ export function AuthProvider({ children }) {
       notifyExpense,
       refreshMe,
       isAuthenticated: !!user,
+      authFetch,
     }),
-    [user, token, login, signup, logout, loading, connectTelegram, notifyExpense, refreshMe],
+    [user, token, login, signup, logout, loading, connectTelegram, notifyExpense, refreshMe, authFetch],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

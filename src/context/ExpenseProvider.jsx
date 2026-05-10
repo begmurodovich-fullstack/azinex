@@ -1,79 +1,28 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ExpenseContext } from './expenseContext'
-
-const STORAGE_EXPENSES = 'azinex-expenses-v1'
-const STORAGE_BALANCE = 'azinex-balance-v1'
-
-function readExpenses() {
-  try {
-    const raw = localStorage.getItem(STORAGE_EXPENSES)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function readBalance() {
-  try {
-    const raw = localStorage.getItem(STORAGE_BALANCE)
-    if (raw == null || raw === '') return 0
-    const n = Number(raw)
-    return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0
-  } catch {
-    return 0
-  }
-}
-
-function expenseReducer(state, action) {
-  switch (action.type) {
-    case 'add': {
-      const id =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `exp-${Date.now()}`
-      const d = new Date()
-      const pad = (n) => String(n).padStart(2, '0')
-      return [
-        {
-          id,
-          date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-          time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-          category: action.payload.categoryLabel,
-          categoryKey: action.payload.categoryKey,
-          amount: action.payload.amount,
-        },
-        ...state,
-      ]
-    }
-    case 'delete':
-      return state.filter((e) => e.id !== action.id)
-    default:
-      return state
-  }
-}
+import { useAuth } from './useAuth'
 
 export function ExpenseProvider({ children }) {
-  const [expenses, dispatch] = useReducer(expenseReducer, undefined, readExpenses)
+  const { authFetch, isAuthenticated } = useAuth()
+  const [expenses, setExpenses] = useState([])
+  const [totalBalance, setTotalBalanceState] = useState(0)
 
-  const [totalBalance, setTotalBalanceState] = useState(readBalance)
-
+  // Fetch initial data
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(expenses))
-    } catch {
-      /* ignore */
-    }
-  }, [expenses])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_BALANCE, String(totalBalance))
-    } catch {
-      /* ignore */
-    }
-  }, [totalBalance])
+    if (!isAuthenticated) return;
+    let mounted = true;
+    authFetch("/user-data")
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data.ok) {
+          setExpenses(data.expenses || []);
+          setTotalBalanceState(data.balance || 0);
+        }
+      })
+      .catch(console.error);
+    
+    return () => { mounted = false; };
+  }, [authFetch, isAuthenticated]);
 
   const setTotalBalance = useCallback((value) => {
     let n
@@ -84,10 +33,16 @@ export function ExpenseProvider({ children }) {
       n = Number(value)
     }
     if (!Number.isFinite(n) || n < 0) return
-    setTotalBalanceState(Math.round(n))
-  }, [])
+    const amount = Math.round(n);
+    setTotalBalanceState(amount)
+    
+    // Sync with backend
+    authFetch("/user-data/balance", {
+      method: "POST",
+      body: JSON.stringify({ amount })
+    }).catch(console.error);
+  }, [authFetch])
 
-  /** Hamyonga yangi pul qo‘shish (masalan bankdan yoki naqd) — jami fondga qo‘shiladi */
   const addToBalance = useCallback((value) => {
     let n
     if (typeof value === 'string') {
@@ -97,8 +52,41 @@ export function ExpenseProvider({ children }) {
       n = Number(value)
     }
     if (!Number.isFinite(n) || n <= 0) return
-    setTotalBalanceState((prev) => Math.round(prev + n))
-  }, [])
+    const amountToAdd = Math.round(n);
+    
+    setTotalBalanceState((prev) => {
+      const newBalance = prev + amountToAdd;
+      authFetch("/user-data/balance", {
+        method: "POST",
+        body: JSON.stringify({ amount: newBalance })
+      }).catch(console.error);
+      return newBalance;
+    });
+  }, [authFetch])
+
+  const addExpense = useCallback((payload) => {
+    // Optimistic local update not strictly needed, but makes UI feel fast.
+    // However, the backend generates ID. So it's better to wait for backend,
+    // or just let backend create and then append.
+    authFetch("/user-data/expenses", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && data.expense) {
+          setExpenses(prev => [data.expense, ...prev]);
+        }
+      })
+      .catch(console.error);
+  }, [authFetch])
+
+  const deleteExpense = useCallback((id) => {
+    setExpenses(prev => prev.filter(e => e.id !== id)); // Optimistic
+    authFetch(`/user-data/expenses/${id}`, {
+      method: "DELETE"
+    }).catch(console.error);
+  }, [authFetch])
 
   const totalExpensesAmount = useMemo(
     () => expenses.reduce((s, e) => s + e.amount, 0),
@@ -112,10 +100,10 @@ export function ExpenseProvider({ children }) {
       setTotalBalance,
       addToBalance,
       totalExpensesAmount,
-      addExpense: (payload) => dispatch({ type: 'add', payload }),
-      deleteExpense: (id) => dispatch({ type: 'delete', id }),
+      addExpense,
+      deleteExpense,
     }),
-    [expenses, totalBalance, setTotalBalance, addToBalance, totalExpensesAmount],
+    [expenses, totalBalance, setTotalBalance, addToBalance, totalExpensesAmount, addExpense, deleteExpense],
   )
 
   return (
