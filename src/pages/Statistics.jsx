@@ -224,14 +224,14 @@ export function Statistics() {
                   style={{ animationDelay: `${260 + i * 65}ms` }}
                 >
                   <div className="mb-1 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full transition-transform duration-200 hover:scale-125"
                         style={{ backgroundColor: row.color }}
                       />
-                      <span className="text-foreground">{row.name}</span>
+                      <span className="text-foreground truncate">{row.name}</span>
                     </div>
-                    <span className="tabular-nums text-muted">
+                    <span className="tabular-nums text-muted shrink-0">
                       {formatMoney(row.value)}
                     </span>
                   </div>

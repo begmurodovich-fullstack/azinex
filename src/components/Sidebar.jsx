@@ -6,6 +6,7 @@ import {
   List,
   LogOut,
   Plus,
+  User,
 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 
@@ -15,6 +16,7 @@ const items = [
   { to: '/expenses', label: 'Xarajatlar ro‘yxati', icon: List },
   { to: '/statistics', label: 'Statistika', icon: BarChart3 },
   { to: '/subscription', label: 'Obuna', icon: Crown },
+  { to: '/profile', label: 'Profil', icon: User },
 ]
 
 /**

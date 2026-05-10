@@ -7,6 +7,7 @@ import { AddExpense } from './pages/AddExpense'
 import { ExpenseList } from './pages/ExpenseList'
 import { Statistics } from './pages/Statistics'
 import { Subscription } from './pages/Subscription'
+import { Profile } from './pages/Profile'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="expenses" element={<ExpenseList />} />
               <Route path="statistics" element={<Statistics />} />
               <Route path="subscription" element={<Subscription />} />
+              <Route path="profile" element={<Profile />} />
             </Route>
           </Route>
 
