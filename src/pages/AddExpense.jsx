@@ -1,57 +1,95 @@
-import { useMemo, useState } from 'react'
-import { Banknote } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { MoneyDigitsField } from '../components/MoneyDigitsField'
-import { useCategories } from '../context/useCategories'
-import { useCurrency } from '../context/useCurrency'
-import { useExpenses } from '../context/useExpenses'
+import { useMemo, useState } from "react";
+import { Banknote } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { MoneyDigitsField } from "../components/MoneyDigitsField";
+import { useCategories } from "../context/useCategories";
+import { useCurrency } from "../context/useCurrency";
+import { useExpenses } from "../context/useExpenses";
 import {
   formatGroupedFromDigits,
   inputCurrencyHint,
   inputLocaleForCurrency,
-} from '../lib/moneyInput'
+} from "../lib/moneyInput";
 
 export function AddExpense() {
-  const navigate = useNavigate()
-  const { addExpense } = useExpenses()
-  const { currency } = useCurrency()
-  const locale = inputLocaleForCurrency(currency)
-  const { allOptions, addCustomCategory } = useCategories()
-  const [amountDigits, setAmountDigits] = useState('')
-  const [selected, setSelected] = useState('food')
-  const [newCatLabel, setNewCatLabel] = useState('')
-  const [catErr, setCatErr] = useState('')
+  const navigate = useNavigate();
+  const { addExpense } = useExpenses();
+  const { currency } = useCurrency();
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(
+    /\/$/,
+    "",
+  );
+  const locale = inputLocaleForCurrency(currency);
+  const { allOptions, addCustomCategory } = useCategories();
+  const [amountDigits, setAmountDigits] = useState("");
+  const [selected, setSelected] = useState("food");
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [catErr, setCatErr] = useState("");
+  const [submitErr, setSubmitErr] = useState("");
 
   const selectedKey = useMemo(() => {
-    if (allOptions.some((c) => c.key === selected)) return selected
-    return allOptions[0]?.key ?? 'food'
-  }, [allOptions, selected])
+    if (allOptions.some((c) => c.key === selected)) return selected;
+    return allOptions[0]?.key ?? "food";
+  }, [allOptions, selected]);
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    const n =
-      amountDigits === '' ? NaN : parseInt(amountDigits, 10)
-    if (!Number.isFinite(n) || n <= 0) return
-    const cat = allOptions.find((c) => c.key === selectedKey)
-    if (!cat) return
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitErr("");
+
+    const n = amountDigits === "" ? NaN : parseInt(amountDigits, 10);
+
+    if (!Number.isFinite(n) || n <= 0) {
+      setSubmitErr("Iltimos, to‘g‘ri summa kiriting.");
+      return;
+    }
+
+    const cat = allOptions.find((c) => c.key === selectedKey);
+    if (!cat) {
+      setSubmitErr("Turkum topilmadi. Boshqa turkum tanlab qayta urinib ko‘ring.");
+      return;
+    }
+
+    const amount = Math.round(n);
+
+    // ✅ LOCAL SAVE
     addExpense({
-      amount: Math.round(n),
+      amount,
       categoryKey: cat.key,
       categoryLabel: cat.label,
-    })
-    navigate('/expenses')
+    });
+
+    // 🔥 BACKEND + TELEGRAM
+    try {
+      const res = await fetch(`${apiBase}/notify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount,
+          category: cat.label,
+        }),
+      });
+      if (!res.ok) {
+        console.log("Notify response is not OK:", res.status);
+      }
+    } catch (err) {
+      console.log("Backend error:", err);
+    }
+
+    navigate("/expenses");
   }
 
   function handleAddCategory(ev) {
-    ev.preventDefault()
-    setCatErr('')
-    const key = addCustomCategory(newCatLabel)
+    ev.preventDefault();
+    setCatErr("");
+    const key = addCustomCategory(newCatLabel);
     if (!key) {
-      setCatErr('Bo‘sh yoki takroriy turkum nomi')
-      return
+      setCatErr("Bo‘sh yoki takroriy turkum nomi");
+      return;
     }
-    setNewCatLabel('')
-    setSelected(key)
+    setNewCatLabel("");
+    setSelected(key);
   }
 
   return (
@@ -91,15 +129,15 @@ export function AddExpense() {
                 {formatGroupedFromDigits(amountDigits, locale)} so‘m
               </span>
               <span className="block pt-1 text-faint sm:inline sm:before:hidden">
-                {' '}
+                {" "}
                 — {inputCurrencyHint(currency)}. Saqlashdan oldin summa har doim
                 so‘mda hisoblanadi.
               </span>
             </>
           ) : (
             <>
-              Raqamlarni yozing — mingliklar avtomatik chiqadi (masalan 51000 →{' '}
-              {formatGroupedFromDigits('51000', locale)}). Valyuta tanlovi faqat
+              Raqamlarni yozing — mingliklar avtomatik chiqadi (masalan 51000 →{" "}
+              {formatGroupedFromDigits("51000", locale)}). Valyuta tanlovi faqat
               ajratgich uslubiga ta’sir qiladi.
             </>
           )}
@@ -108,19 +146,19 @@ export function AddExpense() {
         <p className="mb-3 text-sm text-muted">Turkum</p>
         <div className="mb-6 grid grid-cols-2 gap-3">
           {allOptions.map((c) => {
-            const Icon = c.Icon
-            const active = selectedKey === c.key
+            const Icon = c.Icon;
+            const active = selectedKey === c.key;
             return (
               <button
                 key={c.key}
                 type="button"
                 onClick={() => setSelected(c.key)}
                 className={[
-                  'flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-medium transition',
+                  "flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-medium transition",
                   active
-                    ? 'border-emerald-500 bg-emerald-500/10 text-white'
-                    : 'border-border bg-input text-foreground hover:border-border-strong',
-                ].join(' ')}
+                    ? "border-emerald-500 bg-emerald-500/10 text-white"
+                    : "border-border bg-input text-foreground hover:border-border-strong",
+                ].join(" ")}
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${c.iconWrap}`}
@@ -129,7 +167,7 @@ export function AddExpense() {
                 </span>
                 <span className="line-clamp-2">{c.label}</span>
               </button>
-            )
+            );
           })}
         </div>
 
@@ -168,7 +206,10 @@ export function AddExpense() {
         >
           Saqlash
         </button>
+        {submitErr ? (
+          <p className="mt-3 text-center text-xs text-red-400">{submitErr}</p>
+        ) : null}
       </form>
     </div>
-  )
+  );
 }
