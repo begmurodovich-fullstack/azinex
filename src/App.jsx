@@ -25,8 +25,8 @@ export default function App() {
               <Route path="add" element={<AddExpense />} />
               <Route path="expenses" element={<ExpenseList />} />
               <Route path="statistics" element={<Statistics />} />
-              <Route path="subscription" element={<Subscription />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="subscription" element={<Subscription />} />
             </Route>
           </Route>
 
