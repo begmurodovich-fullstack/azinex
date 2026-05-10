@@ -126,8 +126,12 @@ export function Header({ onOpenMenu }) {
         </div>
 
         <div className="flex max-w-[min(100%,12rem)] items-center gap-2 rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground sm:px-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500">
-            <User className="h-4 w-4 text-white" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-500">
+            {user?.avatarUrl ? (
+              <img src={user?.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-4 w-4 text-white" />
+            )}
           </span>
           <span
             className="hidden min-w-0 flex-1 truncate sm:inline"

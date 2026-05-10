@@ -40,6 +40,27 @@ export function Profile() {
     }
   }
 
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Faqat rasm yuklash mumkin' })
+      return
+    }
+    
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Rasm hajmi 2MB dan oshmasligi kerak' })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setAvatarUrl(ev.target.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className="mx-auto max-w-xl">
       <div className="mb-8">
@@ -65,9 +86,20 @@ export function Profile() {
               <User className="h-10 w-10 text-muted" />
             )}
           </div>
-          <div className="text-center sm:text-left">
+          <div className="flex flex-col justify-center text-center sm:text-left">
             <h2 className="text-lg font-medium text-foreground">{user?.name}</h2>
             <p className="text-sm text-muted">{user?.email}</p>
+            <div className="mt-3 flex items-center justify-center sm:justify-start gap-2">
+              <label className="cursor-pointer rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-500 transition-colors hover:bg-emerald-500/20">
+                Rasm yuklash
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              </label>
+              {avatarUrl && (
+                <button type="button" onClick={() => setAvatarUrl('')} className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/20">
+                  O'chirish
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

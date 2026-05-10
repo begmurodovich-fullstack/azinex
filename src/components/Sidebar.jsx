@@ -15,8 +15,8 @@ const items = [
   { to: '/add', label: 'Xarajat qo‘shish', icon: Plus },
   { to: '/expenses', label: 'Xarajatlar ro‘yxati', icon: List },
   { to: '/statistics', label: 'Statistika', icon: BarChart3 },
-  { to: '/subscription', label: 'Obuna', icon: Crown },
   { to: '/profile', label: 'Profil', icon: User },
+  { to: '/subscription', label: 'Obuna', icon: Crown },
 ]
 
 /**
